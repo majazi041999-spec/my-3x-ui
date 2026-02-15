@@ -49,9 +49,10 @@ type AllSetting struct {
 	TgLang           string `json:"tgLang" form:"tgLang"`                     // Telegram bot language
 
 	// Security settings
-	TimeLocation    string `json:"timeLocation" form:"timeLocation"`       // Time zone location
-	TwoFactorEnable bool   `json:"twoFactorEnable" form:"twoFactorEnable"` // Enable two-factor authentication
-	TwoFactorToken  string `json:"twoFactorToken" form:"twoFactorToken"`   // Two-factor authentication token
+	TimeLocation        string `json:"timeLocation" form:"timeLocation"` // Time zone location
+	CustomXrayBinaryURL string `json:"customXrayBinaryURL" form:"customXrayBinaryURL"`
+	TwoFactorEnable     bool   `json:"twoFactorEnable" form:"twoFactorEnable"` // Enable two-factor authentication
+	TwoFactorToken      string `json:"twoFactorToken" form:"twoFactorToken"`   // Two-factor authentication token
 
 	// Subscription server settings
 	SubEnable                   bool   `json:"subEnable" form:"subEnable"`                                     // Enable subscription server

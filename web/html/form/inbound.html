@@ -12,8 +12,9 @@
     <a-form-item label='{{ i18n "protocol" }}'>
         <a-select v-model="inbound.protocol" :disabled="isEdit"
             :dropdown-class-name="themeSwitcher.currentTheme">
-            <a-select-option v-for="p in Protocols" :key="p" :value="p">[[ p
-                ]]</a-select-option>
+            <a-select-option :value="Protocols.HYSTERIA">StealthQUIC (Hysteria2)</a-select-option>
+            <a-select-option :value="Protocols.VLESS">VLESS</a-select-option>
+            <a-select-option :value="Protocols.TROJAN">Trojan</a-select-option>
         </a-select>
     </a-form-item>
 
@@ -107,11 +108,6 @@
     </a-form-item>
 </a-form>
 
-<!-- vmess settings -->
-<template v-if="inbound.protocol === Protocols.VMESS">
-    {{template "form/vmess"}}
-</template>
-
 <!-- vless settings -->
 <template v-if="inbound.protocol === Protocols.VLESS">
     {{template "form/vless"}}
@@ -122,34 +118,33 @@
     {{template "form/trojan"}}
 </template>
 
-<!-- shadowsocks -->
-<template v-if="inbound.protocol === Protocols.SHADOWSOCKS">
-    {{template "form/shadowsocks"}}
-</template>
-
-<!-- tunnel -->
-<template v-if="inbound.protocol === Protocols.TUNNEL">
-    {{template "form/tunnel"}}
-</template>
-
-<!-- mixed -->
-<template v-if="inbound.protocol === Protocols.MIXED">
-    {{template "form/mixed"}}
-</template>
-
-<!-- http -->
-<template v-if="inbound.protocol === Protocols.HTTP">
-    {{template "form/http"}}
-</template>
-
-<!-- wireguard -->
-<template v-if="inbound.protocol === Protocols.WIREGUARD">
-    {{template "form/wireguard"}}
-</template>
-
-<!-- tun -->
-<template v-if="inbound.protocol === Protocols.TUN">
-    {{template "form/tun"}}
+<!-- StealthQUIC (Hysteria2) settings -->
+<template v-if="inbound.protocol === Protocols.HYSTERIA">
+    <a-form-item label='Listen Port'>
+        <a-input-number v-model.number="inbound.port" :min="1" :max="65535" style="width:100%"></a-input-number>
+    </a-form-item>
+    <a-form-item label='Masquerade URL'>
+        <a-input v-model.trim="inbound.settings.masquerade"></a-input>
+    </a-form-item>
+    <a-form-item label='Obfs Type'>
+        <a-input value="salamander" disabled></a-input>
+    </a-form-item>
+    <a-form-item label='Obfs Password'>
+        <a-input-group compact>
+            <a-input style="width: calc(100% - 42px)" v-model.trim="inbound.settings.obfs.password"></a-input>
+            <a-button @click="inbound.settings.obfs.password = RandomUtil.randomSeq(32)"><a-icon type="sync"></a-icon></a-button>
+        </a-input-group>
+    </a-form-item>
+    <a-form-item label='Congestion Control'>
+        <a-select v-model="inbound.settings.congestionControl" :dropdown-class-name="themeSwitcher.currentTheme">
+            <a-select-option value="brutal">brutal</a-select-option>
+            <a-select-option value="bbr">bbr</a-select-option>
+            <a-select-option value="reno">reno</a-select-option>
+        </a-select>
+    </a-form-item>
+    <a-form-item label='Up Mbps'><a-input-number v-model.number="inbound.settings.upMbps" :min="1" style="width:100%"></a-input-number></a-form-item>
+    <a-form-item label='Down Mbps'><a-input-number v-model.number="inbound.settings.downMbps" :min="1" style="width:100%"></a-input-number></a-form-item>
+    <a-form-item label='Ignore Client Bandwidth'><a-switch v-model="inbound.settings.ignoreClientBandwidth"></a-switch></a-form-item>
 </template>
 
 <!-- stream settings -->

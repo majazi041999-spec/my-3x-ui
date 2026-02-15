@@ -1,0 +1,23 @@
+{{ template "page/head_start" .}}
+{{ template "page/head_end" .}}
+{{ template "page/body_start" .}}
+<a-layout id="app" v-cloak :class="themeSwitcher.currentTheme">
+  <a-sidebar></a-sidebar>
+  <a-layout id="content-layout">
+    <a-layout-content>
+      <a-card title="راهنمای StealthQUIC (Hysteria2)">
+        <ul>
+          <li>Cloudflare را روی DNS-only (ابر خاکستری) تنظیم کنید.</li>
+          <li>Masquerade پیشنهادی: microsoft.com یا apple.com (سایت ایرانی پیشنهاد نمی‌شود).</li>
+          <li>برای هر کاربر فقط password اختصاصی بدهید و حداقل یک ماه ثابت نگه دارید.</li>
+          <li>لینک subscription را برای refresh خودکار هر ۲۴ ساعت استفاده کنید.</li>
+          <li>کلاینت پیشنهادی: آخرین HiddifyNG با core = xray.</li>
+        </ul>
+      </a-card>
+    </a-layout-content>
+  </a-layout>
+</a-layout>
+{{template "page/body_scripts" .}}
+{{template "component/aSidebar" .}}
+{{template "component/aThemeSwitch" .}}
+<script>new Vue({el:'#app',data:{themeSwitcher}})</script>
