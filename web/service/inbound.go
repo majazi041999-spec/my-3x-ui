@@ -14,6 +14,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/logger"
 	"github.com/mhsanaei/3x-ui/v2/util/common"
+	"github.com/mhsanaei/3x-ui/v2/util/random"
 	"github.com/mhsanaei/3x-ui/v2/xray"
 
 	"gorm.io/gorm"
@@ -242,6 +243,9 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 			now := time.Now().Unix() * 1000
 			updatedClients := make([]model.Client, 0, len(clients))
 			for _, c := range clients {
+				if (inbound.Protocol == "trojan" || inbound.Protocol == "hysteria") && c.Password == "" {
+					c.Password = random.Seq(16)
+				}
 				if c.CreatedAt == 0 {
 					c.CreatedAt = now
 				}
@@ -575,6 +579,10 @@ func (s *InboundService) AddInboundClient(data *model.Inbound) (bool, error) {
 	nowTs := time.Now().Unix() * 1000
 	for i := range interfaceClients {
 		if cm, ok := interfaceClients[i].(map[string]any); ok {
+			if i < len(clients) && (data.Protocol == "trojan" || data.Protocol == "hysteria") && strings.TrimSpace(clients[i].Password) == "" {
+				clients[i].Password = random.Seq(16)
+				cm["password"] = clients[i].Password
+			}
 			if _, ok2 := cm["created_at"]; !ok2 {
 				cm["created_at"] = nowTs
 			}
@@ -778,6 +786,21 @@ func (s *InboundService) UpdateInboundClient(data *model.Inbound, clientId strin
 	}
 
 	interfaceClients := settings["clients"].([]any)
+	if len(clients) == 0 {
+		return false, common.NewError("empty clients")
+	}
+
+	if data.Protocol == "trojan" || data.Protocol == "hysteria" {
+		if strings.TrimSpace(clients[0].Password) == "" {
+			clients[0].Password = random.Seq(16)
+			if len(interfaceClients) > 0 {
+				if cm, ok := interfaceClients[0].(map[string]any); ok {
+					cm["password"] = clients[0].Password
+					interfaceClients[0] = cm
+				}
+			}
+		}
+	}
 
 	oldInbound, err := s.GetInbound(data.Id)
 	if err != nil {
