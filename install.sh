@@ -10,6 +10,8 @@ cur_dir=$(pwd)
 
 xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
 xui_service="${XUI_SERVICE:=/etc/systemd/system}"
+custom_repo="https://github.com/majazi041999-spec/my-3x-ui.git"
+custom_xray_url="https://github.com/majazi041999-spec/my-stealth-xray/releases/download/v26.2.6-hysteria2/xray-linux-64"
 
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
@@ -76,29 +78,29 @@ is_port_in_use() {
 install_base() {
     case "${release}" in
         ubuntu | debian | armbian)
-            apt-get update && apt-get install -y -q curl tar tzdata socat ca-certificates
+            apt-get update && apt-get install -y -q curl tar tzdata socat ca-certificates git golang-go sqlite3
         ;;
         fedora | amzn | virtuozzo | rhel | almalinux | rocky | ol)
-            dnf -y update && dnf install -y -q curl tar tzdata socat ca-certificates
+            dnf -y update && dnf install -y -q curl tar tzdata socat ca-certificates git golang sqlite
         ;;
         centos)
             if [[ "${VERSION_ID}" =~ ^7 ]]; then
-                yum -y update && yum install -y curl tar tzdata socat ca-certificates
+                yum -y update && yum install -y curl tar tzdata socat ca-certificates git golang sqlite
             else
-                dnf -y update && dnf install -y -q curl tar tzdata socat ca-certificates
+                dnf -y update && dnf install -y -q curl tar tzdata socat ca-certificates git golang sqlite
             fi
         ;;
         arch | manjaro | parch)
-            pacman -Syu && pacman -Syu --noconfirm curl tar tzdata socat ca-certificates
+            pacman -Syu && pacman -Syu --noconfirm curl tar tzdata socat ca-certificates git go sqlite
         ;;
         opensuse-tumbleweed | opensuse-leap)
-            zypper refresh && zypper -q install -y curl tar timezone socat ca-certificates
+            zypper refresh && zypper -q install -y curl tar timezone socat ca-certificates git go sqlite3
         ;;
         alpine)
-            apk update && apk add curl tar tzdata socat ca-certificates
+            apk update && apk add curl tar tzdata socat ca-certificates git go sqlite
         ;;
         *)
-            apt-get update && apt-get install -y -q curl tar tzdata socat ca-certificates
+            apt-get update && apt-get install -y -q curl tar tzdata socat ca-certificates git golang-go sqlite3
         ;;
     esac
 }
@@ -638,6 +640,14 @@ prompt_and_setup_ssl() {
     esac
 }
 
+
+set_custom_xray_binary_url() {
+    local db_path="/etc/x-ui/x-ui.db"
+    if [[ -f "$db_path" ]] && command -v sqlite3 >/dev/null 2>&1; then
+        sqlite3 "$db_path" "INSERT INTO settings(key, value) VALUES('customXrayBinaryURL', '$custom_xray_url') ON CONFLICT(key) DO UPDATE SET value=excluded.value;" >/dev/null 2>&1
+    fi
+}
+
 config_after_install() {
     local existing_hasDefaultCredential=$(${xui_folder}/x-ui setting -show true | grep -Eo 'hasDefaultCredential: .+' | awk '{print $2}')
     local existing_webBasePath=$(${xui_folder}/x-ui setting -show true | grep -Eo 'webBasePath: .+' | awk '{print $2}' | sed 's#^/##')
@@ -758,53 +768,14 @@ config_after_install() {
     fi
     
     ${xui_folder}/x-ui migrate
+    set_custom_xray_binary_url
 }
 
 install_x-ui() {
     cd ${xui_folder%/x-ui}/
-    
-    # Download resources
-    if [ $# == 0 ]; then
-        tag_version=$(curl -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$tag_version" ]]; then
-            echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-            tag_version=$(curl -4 -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-            if [[ ! -n "$tag_version" ]]; then
-                echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
-                exit 1
-            fi
-        fi
-        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
-            exit 1
-        fi
-    else
-        tag_version=$1
-        tag_version_numeric=${tag_version#v}
-        min_version="2.3.5"
-        
-        if [[ "$(printf '%s\n' "$min_version" "$tag_version_numeric" | sort -V | head -n1)" != "$min_version" ]]; then
-            echo -e "${red}Please use a newer version (at least v2.3.5). Exiting installation.${plain}"
-            exit 1
-        fi
-        
-        url="https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
-        echo -e "Beginning to install x-ui $1"
-        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz ${url}
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Download x-ui $1 failed, please check if the version exists ${plain}"
-            exit 1
-        fi
-    fi
-    curl -4fLRo /usr/bin/x-ui-temp https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}Failed to download x-ui.sh${plain}"
-        exit 1
-    fi
-    
-    # Stop x-ui service and remove old resources
+
+    echo -e "${green}Beginning custom installation from source repository...${plain}"
+
     if [[ -e ${xui_folder}/ ]]; then
         if [[ $release == "alpine" ]]; then
             rc-service x-ui stop
@@ -813,26 +784,46 @@ install_x-ui() {
         fi
         rm ${xui_folder}/ -rf
     fi
-    
-    # Extract resources and set permissions
-    tar zxvf x-ui-linux-$(arch).tar.gz
-    rm x-ui-linux-$(arch).tar.gz -f
-    
-    cd x-ui
-    chmod +x x-ui
-    chmod +x x-ui.sh
-    
-    # Check the system's architecture and rename the file accordingly
-    if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
-        mv bin/xray-linux-$(arch) bin/xray-linux-arm
-        chmod +x bin/xray-linux-arm
+
+    git clone --depth 1 ${custom_repo} ${xui_folder}
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Failed to clone custom repository${plain}"
+        exit 1
     fi
-    chmod +x x-ui bin/xray-linux-$(arch)
-    
-    # Update x-ui cli and se set permission
-    mv -f /usr/bin/x-ui-temp /usr/bin/x-ui
+
+    cd ${xui_folder}
+    go build -o x-ui .
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Failed to build x-ui from source${plain}"
+        exit 1
+    fi
+
+    mkdir -p bin
+    curl -L -o bin/xray ${custom_xray_url}
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Failed to download custom xray binary${plain}"
+        exit 1
+    fi
+
+    chmod +x bin/xray x-ui
+
+    # Keep compatibility with xray binary path expected by panel
+    cp -f bin/xray bin/xray-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/armv7l/arm/')
+    chmod +x bin/xray-* 2>/dev/null
+
+    # Update x-ui cli and set permission
+    if [[ -f ${xui_folder}/x-ui.sh ]]; then
+        cp -f ${xui_folder}/x-ui.sh /usr/bin/x-ui
+    else
+        curl -4fLRo /usr/bin/x-ui https://raw.githubusercontent.com/majazi041999-spec/my-3x-ui/main/x-ui.sh
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Failed to install x-ui command script${plain}"
+            exit 1
+        fi
+    fi
     chmod +x /usr/bin/x-ui
     mkdir -p /var/log/x-ui
+
     config_after_install
 
     # Etckeeper compatibility
@@ -848,116 +839,81 @@ install_x-ui() {
             echo -e "${green}Created /etc/.gitignore and added x-ui.db for etckeeper${plain}"
         fi
     fi
-    
+
     if [[ $release == "alpine" ]]; then
-        curl -4fLRo /etc/init.d/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.rc
+        cp -f ${xui_folder}/x-ui.rc /etc/init.d/x-ui
         if [[ $? -ne 0 ]]; then
-            echo -e "${red}Failed to download x-ui.rc${plain}"
+            echo -e "${red}Failed to install x-ui.rc${plain}"
             exit 1
         fi
         chmod +x /etc/init.d/x-ui
         rc-update add x-ui
         rc-service x-ui start
     else
-        # Install systemd service file
         service_installed=false
-        
-        if [ -f "x-ui.service" ]; then
-            echo -e "${green}Found x-ui.service in extracted files, installing...${plain}"
-            cp -f x-ui.service ${xui_service}/ >/dev/null 2>&1
-            if [[ $? -eq 0 ]]; then
-                service_installed=true
-            fi
-        fi
-        
+
+        case "${release}" in
+            ubuntu | debian | armbian)
+                if [ -f "${xui_folder}/x-ui.service.debian" ]; then
+                    cp -f ${xui_folder}/x-ui.service.debian ${xui_service}/x-ui.service >/dev/null 2>&1 && service_installed=true
+                fi
+            ;;
+            arch | manjaro | parch)
+                if [ -f "${xui_folder}/x-ui.service.arch" ]; then
+                    cp -f ${xui_folder}/x-ui.service.arch ${xui_service}/x-ui.service >/dev/null 2>&1 && service_installed=true
+                fi
+            ;;
+            *)
+                if [ -f "${xui_folder}/x-ui.service.rhel" ]; then
+                    cp -f ${xui_folder}/x-ui.service.rhel ${xui_service}/x-ui.service >/dev/null 2>&1 && service_installed=true
+                fi
+            ;;
+        esac
+
         if [ "$service_installed" = false ]; then
+            echo -e "${yellow}Service file not found locally, downloading from custom repository...${plain}"
             case "${release}" in
                 ubuntu | debian | armbian)
-                    if [ -f "x-ui.service.debian" ]; then
-                        echo -e "${green}Found x-ui.service.debian in extracted files, installing...${plain}"
-                        cp -f x-ui.service.debian ${xui_service}/x-ui.service >/dev/null 2>&1
-                        if [[ $? -eq 0 ]]; then
-                            service_installed=true
-                        fi
-                    fi
+                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/majazi041999-spec/my-3x-ui/main/x-ui.service.debian >/dev/null 2>&1
                 ;;
                 arch | manjaro | parch)
-                    if [ -f "x-ui.service.arch" ]; then
-                        echo -e "${green}Found x-ui.service.arch in extracted files, installing...${plain}"
-                        cp -f x-ui.service.arch ${xui_service}/x-ui.service >/dev/null 2>&1
-                        if [[ $? -eq 0 ]]; then
-                            service_installed=true
-                        fi
-                    fi
+                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/majazi041999-spec/my-3x-ui/main/x-ui.service.arch >/dev/null 2>&1
                 ;;
                 *)
-                    if [ -f "x-ui.service.rhel" ]; then
-                        echo -e "${green}Found x-ui.service.rhel in extracted files, installing...${plain}"
-                        cp -f x-ui.service.rhel ${xui_service}/x-ui.service >/dev/null 2>&1
-                        if [[ $? -eq 0 ]]; then
-                            service_installed=true
-                        fi
-                    fi
+                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/majazi041999-spec/my-3x-ui/main/x-ui.service.rhel >/dev/null 2>&1
                 ;;
             esac
-        fi
-        
-        # If service file not found in tar.gz, download from GitHub
-        if [ "$service_installed" = false ]; then
-            echo -e "${yellow}Service files not found in tar.gz, downloading from GitHub...${plain}"
-            case "${release}" in
-                ubuntu | debian | armbian)
-                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.debian >/dev/null 2>&1
-                ;;
-                arch | manjaro | parch)
-                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.arch >/dev/null 2>&1
-                ;;
-                *)
-                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.rhel >/dev/null 2>&1
-                ;;
-            esac
-            
             if [[ $? -ne 0 ]]; then
-                echo -e "${red}Failed to install x-ui.service from GitHub${plain}"
+                echo -e "${red}Failed to install x-ui.service${plain}"
                 exit 1
             fi
-            service_installed=true
         fi
-        
-        if [ "$service_installed" = true ]; then
-            echo -e "${green}Setting up systemd unit...${plain}"
-            chown root:root ${xui_service}/x-ui.service >/dev/null 2>&1
-            chmod 644 ${xui_service}/x-ui.service >/dev/null 2>&1
-            systemctl daemon-reload
-            systemctl enable x-ui
-            systemctl start x-ui
-        else
-            echo -e "${red}Failed to install x-ui.service file${plain}"
-            exit 1
-        fi
+
+        chown root:root ${xui_service}/x-ui.service >/dev/null 2>&1
+        chmod 644 ${xui_service}/x-ui.service >/dev/null 2>&1
+        systemctl daemon-reload
+        systemctl enable x-ui
+        systemctl start x-ui
     fi
-    
-    echo -e "${green}x-ui ${tag_version}${plain} installation finished, it is running now..."
-    echo -e ""
-    echo -e "┌───────────────────────────────────────────────────────┐
-│  ${blue}x-ui control menu usages (subcommands):${plain}              │
-│                                                       │
-│  ${blue}x-ui${plain}              - Admin Management Script          │
-│  ${blue}x-ui start${plain}        - Start                            │
-│  ${blue}x-ui stop${plain}         - Stop                             │
-│  ${blue}x-ui restart${plain}      - Restart                          │
-│  ${blue}x-ui status${plain}       - Current Status                   │
-│  ${blue}x-ui settings${plain}     - Current Settings                 │
-│  ${blue}x-ui enable${plain}       - Enable Autostart on OS Startup   │
-│  ${blue}x-ui disable${plain}      - Disable Autostart on OS Startup  │
-│  ${blue}x-ui log${plain}          - Check logs                       │
-│  ${blue}x-ui banlog${plain}       - Check Fail2ban ban logs          │
-│  ${blue}x-ui update${plain}       - Update                           │
-│  ${blue}x-ui legacy${plain}       - Legacy version                   │
-│  ${blue}x-ui install${plain}      - Install                          │
-│  ${blue}x-ui uninstall${plain}    - Uninstall                        │
-└───────────────────────────────────────────────────────┘"
+
+    local panel_ip
+    panel_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [[ -z "$panel_ip" ]]; then
+        panel_ip="YOUR_SERVER_IP"
+    fi
+
+    local panel_port
+    panel_port=$(${xui_folder}/x-ui setting -show true | grep -Eo 'port: .+' | awk '{print $2}')
+    if [[ -z "$panel_port" ]]; then
+        panel_port="2053"
+    fi
+
+    echo -e "${green}نصب پنل کاستوم StealthQUIC با موفقیت انجام شد!${plain}"
+    echo -e "${green}لینک پنل: http://${panel_ip}:${panel_port}${plain}"
+    echo -e "${green}دستور مدیریت: x-ui${plain}"
+    echo -e "${green}پروتکل اصلی: StealthQUIC (Hysteria2)${plain}"
 }
+
 
 echo -e "${green}Running...${plain}"
 install_base

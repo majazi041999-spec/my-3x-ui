@@ -80,6 +80,7 @@ var defaultValueMap = map[string]string{
 	"externalTrafficInformEnable": "false",
 	"externalTrafficInformURI":    "",
 	"xrayOutboundTestUrl":         "https://www.google.com/generate_204",
+	"customXrayBinaryURL":        "https://github.com/majazi041999-spec/my-stealth-xray/releases/download/v26.2.6-hysteria2/xray-linux-64",
 
 	// LDAP defaults
 	"ldapEnable":            "false",

@@ -137,7 +137,7 @@ func (x *XrayAPI) AddUser(Protocol string, inboundTag string, user map[string]an
 			}
 		}
 		account = serial.ToTypedMessage(vlessAccount)
-	case "trojan":
+	case "trojan", "hysteria":
 		account = serial.ToTypedMessage(&trojan.Account{
 			Password: user["password"].(string),
 		})
