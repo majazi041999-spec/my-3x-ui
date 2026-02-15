@@ -1,13 +1,7 @@
 const Protocols = {
-    VMESS: 'vmess',
     VLESS: 'vless',
     TROJAN: 'trojan',
-    SHADOWSOCKS: 'shadowsocks',
-    TUNNEL: 'tunnel',
-    MIXED: 'mixed',
-    HTTP: 'http',
-    WIREGUARD: 'wireguard',
-    TUN: 'tun',
+    HYSTERIA: 'hysteria',
 };
 
 const SSMethods = {
@@ -200,6 +194,19 @@ class TcpStreamSettings extends XrayCommonClass {
         this.type = type;
         this.request = request;
         this.response = response;
+    }
+
+    genHysteria2Link(client, address = '', port = this.port, remark = '') {
+        const params = new URLSearchParams();
+        params.set('security', 'tls');
+        params.set('insecure', '0');
+        params.set('alpn', 'h3');
+        params.set('obfs', 'salamander');
+        params.set('obfs-password', this.settings.obfs?.password || '');
+        params.set('sni', this.stream.tls.sni || address);
+        params.set('upmbps', this.settings.upMbps || 200);
+        params.set('downmbps', this.settings.downMbps || 200);
+        return `hy2://${client.password}@${address}:${port}?${params.toString()}#${encodeURIComponent(remark)}`;
     }
 
     static fromJson(json = {}) {
@@ -1197,10 +1204,9 @@ class Inbound extends XrayCommonClass {
 
     get clients() {
         switch (this.protocol) {
-            case Protocols.VMESS: return this.settings.vmesses;
-            case Protocols.VLESS: return this.settings.vlesses;
+                        case Protocols.VLESS: return this.settings.vlesses;
             case Protocols.TROJAN: return this.settings.trojans;
-            case Protocols.SHADOWSOCKS: return this.isSSMultiUser ? this.settings.shadowsockses : null;
+                        case Protocols.HYSTERIA: return this.settings.clients;
             default: return null;
         }
     }
@@ -1214,6 +1220,11 @@ class Inbound extends XrayCommonClass {
         this.settings = Inbound.Settings.getSettings(protocol);
         if (protocol === Protocols.TROJAN) {
             this.tls = false;
+        }
+        if (protocol === Protocols.HYSTERIA) {
+            this.port = 443;
+            this.stream.security = 'tls';
+            this.stream.tls.alpn = [ALPN_OPTION.H3];
         }
     }
 
@@ -1316,7 +1327,8 @@ class Inbound extends XrayCommonClass {
     }
 
     canEnableTls() {
-        if (![Protocols.VMESS, Protocols.VLESS, Protocols.TROJAN, Protocols.SHADOWSOCKS].includes(this.protocol)) return false;
+        if (this.protocol === Protocols.HYSTERIA) return true;
+        if (![Protocols.VLESS, Protocols.TROJAN].includes(this.protocol)) return false;
         return ["tcp", "ws", "http", "grpc", "httpupgrade", "xhttp"].includes(this.network);
     }
 
@@ -1342,21 +1354,21 @@ class Inbound extends XrayCommonClass {
     }
 
     canEnableStream() {
-        return [Protocols.VMESS, Protocols.VLESS, Protocols.TROJAN, Protocols.SHADOWSOCKS].includes(this.protocol);
+        return [Protocols.VLESS, Protocols.TROJAN].includes(this.protocol);
     }
 
     reset() {
         this.port = RandomUtil.randomInteger(10000, 60000);
         this.listen = '';
-        this.protocol = Protocols.VMESS;
-        this.settings = Inbound.Settings.getSettings(Protocols.VMESS);
+        this.protocol = Protocols.VLESS;
+        this.settings = Inbound.Settings.getSettings(Protocols.VLESS);
         this.stream = new StreamSettings();
         this.tag = '';
         this.sniffing = new Sniffing();
     }
 
     genVmessLink(address = '', port = this.port, forceTls, remark = '', clientId, security) {
-        if (this.protocol !== Protocols.VMESS) {
+        if (this.protocol !== Protocols.VLESS) {
             return '';
         }
         const tls = forceTls == 'same' ? this.stream.security : forceTls;
@@ -1818,30 +1830,18 @@ Inbound.Settings = class extends XrayCommonClass {
 
     static getSettings(protocol) {
         switch (protocol) {
-            case Protocols.VMESS: return new Inbound.VmessSettings(protocol);
-            case Protocols.VLESS: return new Inbound.VLESSSettings(protocol);
+                        case Protocols.VLESS: return new Inbound.VLESSSettings(protocol);
             case Protocols.TROJAN: return new Inbound.TrojanSettings(protocol);
-            case Protocols.SHADOWSOCKS: return new Inbound.ShadowsocksSettings(protocol);
-            case Protocols.TUNNEL: return new Inbound.TunnelSettings(protocol);
-            case Protocols.MIXED: return new Inbound.MixedSettings(protocol);
-            case Protocols.HTTP: return new Inbound.HttpSettings(protocol);
-            case Protocols.WIREGUARD: return new Inbound.WireguardSettings(protocol);
-            case Protocols.TUN: return new Inbound.TunSettings(protocol);
+            case Protocols.HYSTERIA: return new Inbound.Hysteria2Settings(protocol);
             default: return null;
         }
     }
 
     static fromJson(protocol, json) {
         switch (protocol) {
-            case Protocols.VMESS: return Inbound.VmessSettings.fromJson(json);
-            case Protocols.VLESS: return Inbound.VLESSSettings.fromJson(json);
+                        case Protocols.VLESS: return Inbound.VLESSSettings.fromJson(json);
             case Protocols.TROJAN: return Inbound.TrojanSettings.fromJson(json);
-            case Protocols.SHADOWSOCKS: return Inbound.ShadowsocksSettings.fromJson(json);
-            case Protocols.TUNNEL: return Inbound.TunnelSettings.fromJson(json);
-            case Protocols.MIXED: return Inbound.MixedSettings.fromJson(json);
-            case Protocols.HTTP: return Inbound.HttpSettings.fromJson(json);
-            case Protocols.WIREGUARD: return Inbound.WireguardSettings.fromJson(json);
-            case Protocols.TUN: return Inbound.TunSettings.fromJson(json);
+            case Protocols.HYSTERIA: return Inbound.Hysteria2Settings.fromJson(json);
             default: return null;
         }
     }
@@ -2320,6 +2320,50 @@ Inbound.TrojanSettings.Fallback = class extends XrayCommonClass {
         return fallbacks;
     }
 };
+
+
+Inbound.Hysteria2Settings = class extends Inbound.Settings {
+    constructor(protocol, clients = [new Inbound.Hysteria2Settings.Client()], version = 2, obfs = { type: 'salamander', password: RandomUtil.randomSeq(32) }, masquerade = 'https://www.microsoft.com', congestionControl = 'brutal', upMbps = 200, downMbps = 200, ignoreClientBandwidth = false) {
+        super(protocol);
+        this.clients = clients;
+        this.version = 2;
+        this.obfs = obfs;
+        this.masquerade = masquerade;
+        this.congestionControl = congestionControl;
+        this.upMbps = upMbps;
+        this.downMbps = downMbps;
+        this.ignoreClientBandwidth = ignoreClientBandwidth;
+    }
+
+    static fromJson(json = {}) {
+        return new Inbound.Hysteria2Settings(
+            Protocols.HYSTERIA,
+            (json.clients || []).map(client => Inbound.Hysteria2Settings.Client.fromJson(client)),
+            2,
+            json.obfs || { type: 'salamander', password: RandomUtil.randomSeq(32) },
+            json.masquerade || 'https://www.microsoft.com',
+            json.congestionControl || 'brutal',
+            json.upMbps || 200,
+            json.downMbps || 200,
+            !!json.ignoreClientBandwidth,
+        );
+    }
+
+    toJson() {
+        return {
+            version: 2,
+            clients: Inbound.Hysteria2Settings.toJsonArray(this.clients),
+            obfs: { type: 'salamander', password: this.obfs?.password || '' },
+            masquerade: this.masquerade,
+            congestionControl: this.congestionControl,
+            upMbps: this.upMbps,
+            downMbps: this.downMbps,
+            ignoreClientBandwidth: this.ignoreClientBandwidth,
+        };
+    }
+};
+
+Inbound.Hysteria2Settings.Client = class extends Inbound.TrojanSettings.Trojan {};
 
 Inbound.ShadowsocksSettings = class extends Inbound.Settings {
     constructor(protocol,
