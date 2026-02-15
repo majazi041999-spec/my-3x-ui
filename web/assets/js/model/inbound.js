@@ -1701,6 +1701,22 @@ class Inbound extends XrayCommonClass {
         return url.toString();
     }
 
+    genHysteria2Link(address = '', port = this.port, remark = '', clientPassword = '') {
+        const params = new URLSearchParams();
+        params.set('security', 'tls');
+        params.set('insecure', '0');
+        params.set('alpn', (this.stream.tls.alpn?.length ? this.stream.tls.alpn.join(',') : 'h3'));
+        params.set('obfs', 'salamander');
+        params.set('obfs-password', this.settings.obfs?.password || '');
+        params.set('sni', this.stream.tls.sni || address);
+        params.set('upmbps', this.settings.upMbps || 200);
+        params.set('downmbps', this.settings.downMbps || 200);
+        const url = new URL(`hy2://${clientPassword}@${address}:${port}`);
+        params.forEach((value, key) => url.searchParams.set(key, value));
+        url.hash = encodeURIComponent(remark);
+        return url.toString();
+    }
+
     getWireguardLink(address, port, remark, peerId) {
         let txt = `[Interface]\n`
         txt += `PrivateKey = ${this.settings.peers[peerId].privateKey}\n`
@@ -1733,6 +1749,8 @@ class Inbound extends XrayCommonClass {
                 return this.genSSLink(address, port, forceTls, remark, this.isSSMultiUser ? client.password : '');
             case Protocols.TROJAN:
                 return this.genTrojanLink(address, port, forceTls, remark, client.password);
+            case Protocols.HYSTERIA:
+                return this.genHysteria2Link(address, port, remark, client.password);
             default: return '';
         }
     }
@@ -1792,7 +1810,7 @@ class Inbound extends XrayCommonClass {
     }
 
     static fromJson(json = {}) {
-        return new Inbound(
+        const inbound = new Inbound(
             json.port,
             json.listen,
             json.protocol,
@@ -1801,12 +1819,21 @@ class Inbound extends XrayCommonClass {
             json.tag,
             Sniffing.fromJson(json.sniffing),
             json.clientStats
-        )
+        );
+
+        if (json.protocol === Protocols.HYSTERIA) {
+            inbound.stream.security = 'tls';
+            if (ObjectUtil.isArrEmpty(inbound.stream.tls.alpn)) {
+                inbound.stream.tls.alpn = [ALPN_OPTION.H3];
+            }
+        }
+
+        return inbound;
     }
 
     toJson() {
         let streamSettings;
-        if (this.canEnableStream() || this.stream?.sockopt) {
+        if (this.canEnableStream() || this.protocol === Protocols.HYSTERIA || this.stream?.sockopt) {
             streamSettings = this.stream.toJson();
         }
         return {
