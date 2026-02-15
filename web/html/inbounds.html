@@ -807,7 +807,7 @@
           to_inbound = dbInbound.toInbound()
           this.inbounds.push(to_inbound);
           this.dbInbounds.push(dbInbound);
-          if ([Protocols.VMESS, Protocols.VLESS, Protocols.TROJAN, Protocols.SHADOWSOCKS].includes(inbound.protocol)) {
+          if ([Protocols.VLESS, Protocols.TROJAN, Protocols.HYSTERIA].includes(inbound.protocol)) {
             if (dbInbound.isSS && (!to_inbound.isSSMultiUser)) {
               continue;
             }
@@ -1152,7 +1152,7 @@
         }
         switch (protocol) {
           case Protocols.TROJAN:
-          case Protocols.SHADOWSOCKS:
+          case Protocols.HYSTERIA:
             return clients.findIndex(item => item && item.password === client.password && item.email === client.email);
           default: return clients.findIndex(item => item && item.id === client.id && item.email === client.email);
         }
@@ -1246,7 +1246,7 @@
       getClientId(protocol, client) {
         switch (protocol) {
           case Protocols.TROJAN: return client.password;
-          case Protocols.SHADOWSOCKS: return client.email;
+          case Protocols.HYSTERIA: return client.password;
           default: return client.id;
         }
       },
@@ -1255,7 +1255,7 @@
         if (dbInbound.listen.startsWith("@")) {
           rootInbound = this.inbounds.find((i) =>
             i.isTcp &&
-            ['trojan', 'vless'].includes(i.protocol) &&
+            ['trojan', 'vless', 'hysteria'].includes(i.protocol) &&
             i.settings.fallbacks.find(f => f.dest === dbInbound.listen)
           );
           if (rootInbound) {

@@ -15,20 +15,20 @@
         </template>
         <a-input v-model.trim="client.email"></a-input>
     </a-form-item>
-    <a-form-item v-if="inbound.protocol === Protocols.TROJAN || inbound.protocol === Protocols.SHADOWSOCKS">
+    <a-form-item v-if="inbound.protocol === Protocols.TROJAN || inbound.protocol === Protocols.HYSTERIA">
         <template slot="label">
             <a-tooltip>
                 <template slot="title">
                     <span>{{ i18n "reset" }}</span>
                 </template>
                 {{ i18n "password" }}
-                <a-icon v-if="inbound.protocol === Protocols.SHADOWSOCKS" @click="client.password = RandomUtil.randomShadowsocksPassword(inbound.settings.method)" type="sync"></a-icon>
                 <a-icon v-if="inbound.protocol === Protocols.TROJAN" @click="client.password = RandomUtil.randomSeq(10)"type="sync"> </a-icon>
+                <a-icon v-if="inbound.protocol === Protocols.HYSTERIA" @click="client.password = RandomUtil.randomSeq(32)"type="sync"> </a-icon>
             </a-tooltip>
         </template>
         <a-input v-model.trim="client.password"></a-input>
     </a-form-item>
-    <a-form-item v-if="inbound.protocol === Protocols.VMESS || inbound.protocol === Protocols.VLESS">
+    <a-form-item v-if="inbound.protocol === Protocols.VLESS">
         <template slot="label">
             <a-tooltip>
                 <template slot="title">
@@ -39,12 +39,7 @@
         </template>
         <a-input v-model.trim="client.id"></a-input>
     </a-form-item>
-    <a-form-item v-if="inbound.protocol === Protocols.VMESS" label='{{ i18n "security" }}'>
-        <a-select v-model="client.security" :dropdown-class-name="themeSwitcher.currentTheme">
-            <a-select-option v-for="key in USERS_SECURITY" :value="key">[[ key ]]</a-select-option>
-        </a-select>
-    </a-form-item>
-    <a-form-item v-if="client.email && app.subSettings?.enable">
+        <a-form-item v-if="client.email && app.subSettings?.enable">
         <template slot="label">
             <a-tooltip>
                 <template slot="title">

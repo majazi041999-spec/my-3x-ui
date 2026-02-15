@@ -50,6 +50,13 @@
             </template>
         </a-setting-list-item>
         <a-setting-list-item paddings="small">
+            <template #title>Custom Xray Binary URL</template>
+            <template #description>Downloaded on panel restart and replaces /usr/local/x-ui/bin/xray</template>
+            <template #control>
+                <a-input type="text" v-model="allSetting.customXrayBinaryURL"></a-input>
+            </template>
+        </a-setting-list-item>
+        <a-setting-list-item paddings="small">
             <template #title>{{ i18n "pages.settings.sessionMaxAge" }}</template>
             <template #description>{{ i18n "pages.settings.sessionMaxAgeDesc" }}</template>
             <template #control>

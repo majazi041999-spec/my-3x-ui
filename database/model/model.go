@@ -15,6 +15,7 @@ type Protocol string
 const (
 	VMESS       Protocol = "vmess"
 	VLESS       Protocol = "vless"
+	Hysteria    Protocol = "hysteria"
 	Tunnel      Protocol = "tunnel"
 	HTTP        Protocol = "http"
 	Trojan      Protocol = "trojan"
