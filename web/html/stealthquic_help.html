@@ -1,23 +1,201 @@
 {{ template "page/head_start" .}}
 {{ template "page/head_end" .}}
+
 {{ template "page/body_start" .}}
 <a-layout id="app" v-cloak :class="themeSwitcher.currentTheme">
   <a-sidebar></a-sidebar>
   <a-layout id="content-layout">
     <a-layout-content>
-      <a-card title="راهنمای StealthQUIC (Hysteria2)">
+      <a-card title="راهنمای StealthQUIC (Hysteria2)" :bordered="false">
+        <a-alert type="info" show-icon message="نسخه راهنما: فوریه ۲۰۲۶"
+          description="این راهنما برای شبکه ایران (MCI / Irancell / شاتل) نوشته شده و روی پایداری + فروش پایدار تمرکز دارد.">
+        </a-alert>
+
+        <h2 style="margin-top:16px">۱) انتخاب پروتکل: چه زمانی StealthQUIC، چه زمانی Reality، چه زمانی Trojan؟</h2>
         <ul>
-          <li>Cloudflare را روی DNS-only (ابر خاکستری) تنظیم کنید.</li>
-          <li>Masquerade پیشنهادی: microsoft.com یا apple.com (سایت ایرانی پیشنهاد نمی‌شود).</li>
-          <li>برای هر کاربر فقط password اختصاصی بدهید و حداقل یک ماه ثابت نگه دارید.</li>
-          <li>لینک subscription را برای refresh خودکار هر ۲۴ ساعت استفاده کنید.</li>
-          <li>کلاینت پیشنهادی: آخرین HiddifyNG با core = xray.</li>
+          <li><b>StealthQUIC (Hysteria2)</b>: معمولاً بهترین ترکیب سرعت/پایداری روی UDP (خصوصاً اگر 443/UDP باز و سالم باشد).</li>
+          <li><b>VLESS + Reality</b>: گزینه بسیار پایدار در بسیاری از مسیرها، مخصوصاً وقتی UDP مشکل‌دار است.</li>
+          <li><b>Trojan + TLS</b>: ساده، سازگار، مناسب برای کاربرانی که فقط اتصال کم‌دردسر می‌خواهند.</li>
         </ul>
+
+        <h2>۲) نکات حیاتی Cloudflare (مهم‌ترین بخش)</h2>
+        <ul>
+          <li>رکورد دامنه پنل/سرور باید <b>DNS-only (ابر خاکستری)</b> باشد.</li>
+          <li><b>Orange Cloud</b> برای این پروتکل‌ها (خصوصاً Reality و Hysteria2) باعث اختلال، هندشیک نامعتبر یا قطع می‌شود.</li>
+          <li>TTL را Auto بگذارید؛ رکوردهای متعدد و تستی را سریع پاک نکنید تا رفتار DNS پایدار بماند.</li>
+        </ul>
+
+        <h2>۳) StealthQUIC (Hysteria2): هر فیلد دقیقاً چه‌کار می‌کند؟</h2>
+        <ul>
+          <li><b>protocol</b>: باید همیشه <code>hysteria</code> باشد.</li>
+          <li><b>settings.version</b>: باید همیشه <code>2</code> باشد (هسته Hysteria2).</li>
+          <li><b>Listen Port</b>: پیشنهاد اصلی ایران: <b>443/UDP</b>.</li>
+          <li><b>Masquerade URL</b>: صفحه پوششی؛ بهترین‌ها: <code>https://www.microsoft.com</code> یا <code>https://www.apple.com</code>.</li>
+          <li><b>چرا سایت ایرانی (مثلاً telewebion) بد است؟</b> الگوی ترافیک بومی/قابل حدس‌تر می‌شود و ریسک فیلتر رفتاری بالا می‌رود.</li>
+          <li><b>Obfs Type</b>: فقط <code>salamander</code> (استاندارد امن و رایج Hysteria2).</li>
+          <li><b>Obfs Password</b>: کلید obfs؛ حداقل ۳۲ کاراکتر تصادفی.</li>
+          <li><b>Congestion Control</b>:
+            <ul>
+              <li><code>brutal</code>: معمولاً بیشترین سرعت خام؛ روی لینک ضعیف می‌تواند نوسان بسازد.</li>
+              <li><code>bbr</code>: متعادل و امن برای اکثر کاربران.</li>
+              <li><code>reno</code>: محافظه‌کار؛ وقتی packet loss بالاست گاهی پایدارتر می‌شود.</li>
+            </ul>
+          </li>
+          <li><b>Up/Down Mbps</b>: سقف پهنای‌باند سمت سرور.</li>
+          <li><b>Ignore Client Bandwidth</b>: اگر فعال باشد، محدودیت سمت کلاینت نادیده گرفته می‌شود.</li>
+          <li><b>TLS (cert/key + ALPN=h3)</b>: برای Hysteria2 بهتر است ALPN روی <code>h3</code> باشد.</li>
+        </ul>
+
+        <h3>مقادیر پیشنهادی سریع برای ایران</h3>
+        <table class="table" style="width:100%;border-collapse:collapse">
+          <tr><th style="text-align:right">فیلد</th><th style="text-align:right">پیشنهاد</th><th style="text-align:right">توضیح</th></tr>
+          <tr><td>Port</td><td>443 UDP</td><td>کمترین حساسیت رفتاری و بیشترین سازگاری</td></tr>
+          <tr><td>Masquerade</td><td>microsoft.com / apple.com</td><td>الگوی ترافیک معتبر جهانی</td></tr>
+          <tr><td>Obfs</td><td>salamander + رمز ۳۲ کاراکتر</td><td>پنهان‌سازی بهتر</td></tr>
+          <tr><td>Congestion</td><td>brutal (پیش‌فرض)، در نوسان بالا bbr</td><td>تیون بر اساس کیفیت لینک</td></tr>
+          <tr><td>Up/Down</td><td>200/200 برای شروع</td><td>برای VPS 1Gbps معمولاً مناسب است</td></tr>
+          <tr><td>IgnoreClientBandwidth</td><td>false</td><td>کنترل بهتر مصرف هر کاربر</td></tr>
+        </table>
+
+        <h2 style="margin-top:16px">۴) VLESS + Reality: چک‌لیست ایران</h2>
+        <ul>
+          <li>Fingerprint پیشنهادی: <b>chrome</b>.</li>
+          <li>ServerName/Target واقعی و زنده انتخاب کنید (دامنه‌های مرده نگذارید).</li>
+          <li>Flow را فقط وقتی لازم است فعال کنید؛ تنظیم اشتباه Flow باعث قطع روی بعضی کلاینت‌ها می‌شود.</li>
+          <li>اگر UDP در مسیر مشکل دارد، Reality معمولاً از Hysteria2 پایدارتر می‌شود.</li>
+        </ul>
+
+        <h2>۵) Trojan + TLS: چه زمانی خوب است؟</h2>
+        <ul>
+          <li>برای کاربرانی که اپ‌های قدیمی‌تر یا کلاینت‌های ساده دارند.</li>
+          <li>پسورد کوتاه/قابل حدس نگذارید؛ برای هر کاربر پسورد متفاوت بدهید.</li>
+          <li>SNI و گواهی معتبر لازم است؛ mismatch بین SNI و cert خطای TLS می‌دهد.</li>
+        </ul>
+
+        <h2>۶) تنظیماتی که باعث بلاک سریع‌تر می‌شوند</h2>
+        <ul>
+          <li>Cloudflare روی Orange Cloud.</li>
+          <li>Masquerade غیرواقعی/ضعیف یا سایت‌های محلی پرتکرار.</li>
+          <li>تغییر خیلی زیاد پارامترها در بازه کوتاه (الگوی بی‌ثبات).</li>
+          <li>پسورد مشترک بین چند کاربر پرمصرف.</li>
+          <li>پورت‌های غیرمتعارف و شلوغ بدون دلیل.</li>
+        </ul>
+
+        <h2>۷) اشتباهات رایج که سرعت را خراب می‌کند</h2>
+        <ul>
+          <li>Up/Down بسیار پایین (مثلاً 10/10) برای کاربر ویدئو.</li>
+          <li>brutal روی مسیر پر-loss بدون تست A/B (گاهی bbr بهتر است).</li>
+          <li>تمدید نشدن cert یا مسیر اشتباه cert/key.</li>
+          <li>دادن چندین کانفیگ همزمان به کاربر و Refresh پشت‌سرهم.</li>
+        </ul>
+
+        <h2>۸) سیاست فروش پایدار (خیلی مهم)</h2>
+        <ul>
+          <li>هر کاربر <b>فقط password خودش</b> را بگیرد.</li>
+          <li>همان password حداقل <b>یک ماه ثابت</b> بماند تا رفتار اتصال کاربر پایدار شود.</li>
+          <li>به‌جای تغییر دستی مداوم، از <b>subscription با refresh هر ۲۴ ساعت</b> استفاده کنید.</li>
+          <li>این روش هم پشتیبانی را کم می‌کند، هم نرخ خطای کاربر را.</li>
+        </ul>
+
+        <h2>۹) راهنمای سریع HiddifyNG (core = xray)</h2>
+        <ol>
+          <li>آخرین نسخه HiddifyNG را نصب کنید.</li>
+          <li>در Settings مطمئن شوید Core روی <b>xray</b> است.</li>
+          <li>Subscription URL کاربر را اضافه کنید.</li>
+          <li>Auto Update/Refresh را روی 24h بگذارید.</li>
+          <li>اگر Hysteria2 مشکل داشت، fallback روی Reality همان سابسکریپشن انجام دهید.</li>
+        </ol>
+
+        <h2>۱۰) مقایسه تجربی پایداری/سرعت (ایران - فوریه ۲۰۲۶)</h2>
+        <table class="table" style="width:100%;border-collapse:collapse">
+          <tr><th style="text-align:right">اپراتور</th><th style="text-align:right">StealthQUIC (Hysteria2)</th><th style="text-align:right">VLESS+Reality</th><th style="text-align:right">Trojan</th></tr>
+          <tr><td>MCI</td><td>سرعت خوب، حساس به کیفیت UDP</td><td>پایداری عالی</td><td>پایداری خوب، سرعت متوسط</td></tr>
+          <tr><td>Irancell</td><td>در ساعات خلوت بسیار سریع</td><td>پایدار و قابل اتکا</td><td>خوب برای کلاینت‌های ساده</td></tr>
+          <tr><td>شاتل</td><td>معمولاً قوی و پرسرعت</td><td>بسیار پایدار</td><td>پایدار با سربار بیشتر</td></tr>
+        </table>
+        <p>جمع‌بندی عملی: برای اکثر فروش‌ها، یک پلن Hysteria2 + یک fallback Reality بهترین ترکیب است.</p>
+
+        <h2>۱۱) نمونه JSON کامل</h2>
+        <h3>StealthQUIC (Hysteria2)</h3>
+        <pre style="white-space:pre-wrap">{
+  "protocol": "hysteria",
+  "settings": {
+    "version": 2,
+    "clients": [
+      { "email": "user1", "password": "32-char-random-password" }
+    ],
+    "obfs": { "type": "salamander", "password": "32-char-obfs-password" },
+    "masquerade": "https://www.microsoft.com",
+    "congestionControl": "brutal",
+    "upMbps": 200,
+    "downMbps": 200,
+    "ignoreClientBandwidth": false
+  },
+  "streamSettings": {
+    "security": "tls",
+    "tlsSettings": {
+      "alpn": ["h3"],
+      "certificates": [
+        { "certificateFile": "/root/cert/fullchain.pem", "keyFile": "/root/cert/privkey.pem" }
+      ]
+    }
+  }
+}</pre>
+
+        <h3>VLESS + Reality (نمونه)</h3>
+        <pre style="white-space:pre-wrap">{
+  "protocol": "vless",
+  "settings": {
+    "clients": [
+      { "id": "uuid-here", "email": "user1", "flow": "" }
+    ],
+    "decryption": "none"
+  },
+  "streamSettings": {
+    "network": "tcp",
+    "security": "reality",
+    "realitySettings": {
+      "fingerprint": "chrome",
+      "serverNames": ["www.microsoft.com"],
+      "publicKey": "PUBLIC_KEY",
+      "shortIds": ["0123456789abcdef"]
+    }
+  }
+}</pre>
+
+        <h3>Trojan + TLS (نمونه)</h3>
+        <pre style="white-space:pre-wrap">{
+  "protocol": "trojan",
+  "settings": {
+    "clients": [
+      { "email": "user1", "password": "strong-password" }
+    ]
+  },
+  "streamSettings": {
+    "network": "tcp",
+    "security": "tls",
+    "tlsSettings": {
+      "serverName": "your-domain.com",
+      "certificates": [
+        { "certificateFile": "/root/cert/fullchain.pem", "keyFile": "/root/cert/privkey.pem" }
+      ]
+    }
+  }
+}</pre>
+
+        <a-alert type="success" show-icon message="قاعده طلایی فروش" description="هر کاربر فقط password خودش را داشته باشد؛ تغییر کم، subscription منظم، و مانیتور مصرف/انقضا = پایداری بیشتر + پشتیبانی کمتر."></a-alert>
       </a-card>
     </a-layout-content>
   </a-layout>
 </a-layout>
+
 {{template "page/body_scripts" .}}
 {{template "component/aSidebar" .}}
 {{template "component/aThemeSwitch" .}}
-<script>new Vue({el:'#app',data:{themeSwitcher}})</script>
+<script>
+  new Vue({
+    delimiters: ['[[', ']]'],
+    el: '#app',
+    data: { themeSwitcher }
+  });
+</script>
