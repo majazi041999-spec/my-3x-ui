@@ -35,10 +35,6 @@ class DBInbound {
         this.total = NumberFormatter.toFixed(gb * SizeFormatter.ONE_GB, 0);
     }
 
-    get isVMess() {
-        return this.protocol === Protocols.VMESS;
-    }
-
     get isVLess() {
         return this.protocol === Protocols.VLESS;
     }
@@ -47,20 +43,8 @@ class DBInbound {
         return this.protocol === Protocols.TROJAN;
     }
 
-    get isSS() {
-        return this.protocol === Protocols.SHADOWSOCKS;
-    }
-
-    get isMixed() {
-        return this.protocol === Protocols.MIXED;
-    }
-
-    get isHTTP() {
-        return this.protocol === Protocols.HTTP;
-    }
-
-    get isWireguard() {
-        return this.protocol === Protocols.WIREGUARD;
+    get isHysteria() {
+        return this.protocol === Protocols.HYSTERIA;
     }
 
     get address() {
@@ -121,12 +105,10 @@ class DBInbound {
 
     isMultiUser() {
         switch (this.protocol) {
-            case Protocols.VMESS:
             case Protocols.VLESS:
             case Protocols.TROJAN:
+            case Protocols.HYSTERIA:
                 return true;
-            case Protocols.SHADOWSOCKS:
-                return this.toInbound().isSSMultiUser;
             default:
                 return false;
         }
@@ -134,10 +116,9 @@ class DBInbound {
 
     hasLink() {
         switch (this.protocol) {
-            case Protocols.VMESS:
             case Protocols.VLESS:
             case Protocols.TROJAN:
-            case Protocols.SHADOWSOCKS:
+            case Protocols.HYSTERIA:
                 return true;
             default:
                 return false;

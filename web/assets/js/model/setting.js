@@ -26,6 +26,7 @@ class AllSetting {
         this.twoFactorEnable = false;
         this.twoFactorToken = "";
         this.xrayTemplateConfig = "";
+        this.customXrayBinaryURL = "https://github.com/majazi041999-spec/my-stealth-xray/releases/download/v26.2.6-hysteria2/xray-linux-64";
         this.subEnable = true;
         this.subJsonEnable = false;
         this.subTitle = "";

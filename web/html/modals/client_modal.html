@@ -55,16 +55,15 @@
         getClientId(protocol, client) {
             switch (protocol) {
                 case Protocols.TROJAN: return client.password;
-                case Protocols.SHADOWSOCKS: return client.email;
+                case Protocols.HYSTERIA: return client.password;
                 default: return client.id;
             }
         },
         addClient(inbound, clients) {
             switch (inbound.protocol) {
-                case Protocols.VMESS: return clients.push(new Inbound.VmessSettings.VMESS());
-                case Protocols.VLESS: return clients.push(new Inbound.VLESSSettings.VLESS());
+                                case Protocols.VLESS: return clients.push(new Inbound.VLESSSettings.VLESS());
                 case Protocols.TROJAN: return clients.push(new Inbound.TrojanSettings.Trojan());
-                case Protocols.SHADOWSOCKS: return clients.push(new Inbound.ShadowsocksSettings.Shadowsocks(clients[0].method, RandomUtil.randomShadowsocksPassword(inbound.settings.method)));
+                case Protocols.HYSTERIA: return clients.push(new Inbound.Hysteria2Settings.Client());
                 default: return null;
             }
         },
